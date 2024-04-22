@@ -144,24 +144,12 @@ int game_over(){
     clear_screen();
     volatile int *JTAG_UART_ptr = (int *)JTAG_UART_BASE;
     char c;
-    char h1[] = "The motto of this game is to stack all disks on Rod C ";
-    writeString(16, 20, h1);
+    char h1[] = "YOU HAVE WON!!";
+    writeString(32, 30, h1);
 
 
-    char h3[] = "How to Play: ";
-    writeString(31, 30, h3);
-
-    char h4[] = "1. Move all disks from Rod A (source) to Rod C (destination).";
-    writeString(10, 35, h4);
-
-    char h5[] = "2. Slide the switch to select the source rod (A, B, or C).";
-    writeString(10, 40, h5);
-
-    char h6[] = "3. Then, slide the switch to choose the destination rod (A, B, or C) for the top disk.";
-    writeString(10, 45, h6);
-
-    char h7[] = "4. Larger disks cannot be placed on smaller disks.";
-    writeString(10, 50, h7);
+    char h7[] = "Press Esc to go to the Home page";
+    writeString(25, 35, h7);
 
     while (1)
     {
@@ -227,7 +215,7 @@ int game() {
         if (top[2] == DISKS) {
 			printRods(rods, top);
             printf("You have won!\n");
-            break;
+            game_over();
         }
         
         
