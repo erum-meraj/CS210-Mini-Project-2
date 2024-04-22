@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 #define RODS 3
-#define DISKS 3
+#define DISKS 4
 #define JTAG_UART_BASE ((volatile int *)0xFF201000)
 #define JTAG_UART_CONTROL ((volatile int *)(0xFF201000 + 4))
 #define BLUE 0x00ff
@@ -37,6 +37,28 @@ short rgbconv(int r, int g, int b) {
     return color;
 }
 
+// Function to get color based on index x
+short get_clr(int x) {
+    // Define arrays of values for x and corresponding colors
+    int arr[] = {1, 2, 3, 4};
+    short clr[] = {0xF0F3, 0x15F5, 0x836F, 0x2119};
+
+    // Iterate through the array to find matching index
+    for (int i = 0; i < 4; i++) {
+        if (arr[i] == x) {
+            // Extract RGB components from the short color value
+            int r = (clr[i] >> 8) & 0xF;   // Red component (4 bits)
+            int g = (clr[i] >> 4) & 0xF;   // Green component (4 bits)
+            int b = clr[i] & 0xF;          // Blue component (4 bits)
+
+            // Convert RGB components to a 16-bit color and return
+            return rgbconv(r, g, b);
+        }
+    }
+
+    // Return default color (black) if no match found (optional)
+    return 0x0000;
+}
 
 char get_jtag(volatile int *JTAG_UART_ptr)
 {
@@ -328,7 +350,7 @@ void clear_screen() {
 
 void draw_square(int x, int y, int size, short color) {
     int i, j;
-    for (i = y; i < y + size; i++) {
+    for (i = y; i < y + 10; i++) {
         for (j = x; j < x + size; j++) {
             write_pixel(j, i, color);
         }
@@ -337,6 +359,7 @@ void draw_square(int x, int y, int size, short color) {
  
 void drawRodsAndDisks(int rods[3][3], int top[3]) {
     clear_screen();
+    
     for (int h = 0; h < 270; h++) {
             write_pixel(30 + h, 200, 0xFFFF);  // White color (vertical line)
         }
@@ -356,10 +379,11 @@ void drawRodsAndDisks(int rods[3][3], int top[3]) {
         for (int d = 0; d < top[i]; d++) {
             int diskWeight = rods[i][d];
             if (diskWeight > 0) {
-                int diskWidth = diskWeight * 10;  // Calculate disk width based on weight
+                int diskWidth = diskWeight * 20;  // Calculate disk width based on weight
                 int diskX = rodX - diskWidth / 2;  // Center disk on the rod
-                draw_square(diskX, diskY - diskWidth, diskWidth, 0xF800);
-                diskY -= diskWidth + 5;  // Move up for the next disk (next smaller size)
+                short clr = get_clr(diskWeight);
+                draw_square(diskX, diskY - 15, diskWidth, clr);
+                diskY -= 15 + 1;  // Move up for the next disk (next smaller size)
             }
         }
     }
