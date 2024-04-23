@@ -11,12 +11,11 @@
 #define RED 0xf800
 #define YELLOW 0xff70
 #define PINK 0xf81F
-
 #define SWITCHES ((volatile unsigned long *) 0xFF200040)
 
 // Function prototypes
 void initializeGame(int rods[RODS][DISKS], int disks);
-void printRods(int rods[RODS][DISKS], int top[RODS]);
+void printRods(int rods[RODS][DISKS], int top[RODS], int moves);
 void moveDisk(int rods[RODS][DISKS], int top[RODS], int fromRod, int toRod);
 void towerOfHanoi(int disks, int fromRod, int toRod, int auxRod);
 int getUserInput();
@@ -31,33 +30,33 @@ void draw_square(int x, int y, int size, short color) ;
 char get_jtag(volatile int *JTAG_UART_ptr);
 void put_jtag(volatile int *JTAG_UART_ptr, char c);
 short rgbconv(int r, int g, int b);
+short get_clr(int x);
+void displayMovesCount(int moves, int y);
 
 short rgbconv(int r, int g, int b) {
     short color = ((r & 0x1F) << 11) | ((g & 0x3F) << 5) | (b & 0x1F);
     return color;
 }
 
-// Function to get color based on index x
-short get_clr(int x) {
-    // Define arrays of values for x and corresponding colors
-    int arr[] = {1, 2, 3, 4};
-    short clr[] = {0xF0F3, 0x15F5, 0x836F, 0x2119};
+void displayMovesCount(int moves, int y) {
+    // Convert moves count to a string
+    char movesStr[10];
+    sprintf(movesStr, "%d", moves);
 
-    // Iterate through the array to find matching index
-    for (int i = 0; i < 4; i++) {
-        if (arr[i] == x) {
-            // Extract RGB components from the short color value
-            int r = (clr[i] >> 8) & 0xF;   // Red component (4 bits)
-            int g = (clr[i] >> 4) & 0xF;   // Green component (4 bits)
-            int b = clr[i] & 0xF;          // Blue component (4 bits)
+    // Calculate starting X position for displaying moves count (top right corner)
+    int startX = 320 - (strlen(movesStr) * 8); // Assuming each character is 8 pixels wide
 
-            // Convert RGB components to a 16-bit color and return
-            return rgbconv(r, g, b);
+    // Clear the area where moves count will be displayed
+    for (int i = startX; i < 320; i++) {
+        for (int j = 0; j < 16; j++) { // Assuming a character height of 16 pixels
+            write_char(i, j, ' '); // Clear character space
         }
     }
 
-    // Return default color (black) if no match found (optional)
-    return 0x0000;
+    // Display moves count string starting from calculated position
+    char mo[] = "Number of moves made: ";
+    writeString(26, y, mo);
+    writeString(50, y, movesStr);
 }
 
 char get_jtag(volatile int *JTAG_UART_ptr)
@@ -70,7 +69,6 @@ char get_jtag(volatile int *JTAG_UART_ptr)
         return ('\0');
 }
 
-// print user text to console
 void put_jtag(volatile int *JTAG_UART_ptr, char c)
 {
     int control;
@@ -161,7 +159,7 @@ void rules()
     }
 }
 
-int game_over(){
+int game_over(int moves){
    
     clear_screen();
     volatile int *JTAG_UART_ptr = (int *)JTAG_UART_BASE;
@@ -172,6 +170,10 @@ int game_over(){
 
     char h7[] = "Press Esc to go to the Home page";
     writeString(25, 35, h7);
+
+    displayMovesCount(moves, 40);
+    char h8[] = "Least Number of moves Required:  15";
+    writeString(25, 42, h8);
 
     while (1)
     {
@@ -193,6 +195,7 @@ int main()
 }
 
 int game() {
+    int moves = 0;
     int rods[RODS][DISKS];  
     int top[RODS] = {DISKS, 0, 0};  // Top index of disks for each rod
     
@@ -206,7 +209,7 @@ int game() {
     
     int sourceRod, destRod;
     while (1) {
-        printRods(rods, top);
+        printRods(rods, top, moves);
         printf("Enter source rod (1, 2, 3): ");
         sourceRod = getUserInput() - 1;
         if (sourceRod < 0 || sourceRod >= RODS) {
@@ -225,19 +228,24 @@ int game() {
             printf("No disk to move from rod %d.\n", sourceRod + 1);
             continue;
         }
-        
+        if (destRod == sourceRod) {
+            printf("Invalid move.\n");
+            continue;
+        }
         if (top[destRod] > 0 && rods[sourceRod][top[sourceRod] - 1] > rods[destRod][top[destRod] - 1]) {
             printf("Cannot place a larger disk on top of a smaller disk.\n");
             continue;
         }
-        
+        moves++;
         moveDisk(rods, top, sourceRod, destRod);
+        displayMovesCount(moves, 55);
+        
         
         // Check if all disks are moved to rod 3
         if (top[2] == DISKS) {
-			printRods(rods, top);
+			printRods(rods, top, moves);
             printf("You have won!\n");
-            game_over();
+            game_over(moves);
         }
         
         
@@ -268,13 +276,14 @@ void write_char(int x, int y, char c) {
 
 void clear_screen() {
   int x, y;
-
+    short clr = rgbconv(252, 228, 206);
   // Fill the screen with blue color (0x001F for a blue pixel)
   for (x = 0; x < 320; x++) {
     for (y = 0; y < 240; y++) {
-      write_pixel(x, y, 0); // Blue color
+      write_pixel(x, y, clr); // Blue color
     }
   }
+
 
   // Draw a yellow border with a thickness of 3 pixels and a gap of 7 pixels from the edge
   int borderThickness = 3;
@@ -347,31 +356,48 @@ void clear_screen() {
 
 }
 
+short get_clr(int x) {
+    // Define arrays of values for x and corresponding colors
+
+    short clr[] = {RED, // Red
+    YELLOW, // Yellow
+    PINK, // Light Green
+    BLUE
+    };
+    return clr[x-1];
+}
 
 void draw_square(int x, int y, int size, short color) {
     int i, j;
-    for (i = y; i < y + 10; i++) {
+    for (i = y; i < y + 15; i++) {
         for (j = x; j < x + size; j++) {
             write_pixel(j, i, color);
         }
     }
 }
  
-void drawRodsAndDisks(int rods[3][3], int top[3]) {
+void drawRodsAndDisks(int rods[RODS][DISKS], int top[3], int moves) {
     clear_screen();
-    
-    for (int h = 0; h < 270; h++) {
-            write_pixel(30 + h, 200, 0xFFFF);  // White color (vertical line)
+    displayMovesCount(moves, 55);
+    // Draw vertical guide lines for rods
+    for (int i = 0; i < 3; i++) {
+        int rodX = 60 + (i * 100);
+        for (int h = 100; h < 200; h++) {
+            write_pixel(rodX, h, 0xFFFF);  // White color (vertical line)
         }
+    }
+    for (int j = 0; j<5; j++){
+        for (int h = 30; h < 290; h++) {
+            write_pixel(h, 200+j, 0xFFFF);  // White color (vertical line)
+        }
+    }
+    
+    
+    // Iterate through each rod
     for (int i = 0; i < 3; i++) {
         int rodX = 60 + (i * 100);
         int rodY = 0;
 
-        // Draw vertical line for the rod
-        for (int h = 100; h < 200; h++) {
-            write_pixel(rodX, rodY + h, 0xFFFF);  // White color (vertical line)
-        }
-        
         // Calculate starting Y position for the bottom disk on this rod
         int diskY = 195;  // Adjust this value based on the rod height and disk sizes
 
@@ -382,16 +408,17 @@ void drawRodsAndDisks(int rods[3][3], int top[3]) {
                 int diskWidth = diskWeight * 20;  // Calculate disk width based on weight
                 int diskX = rodX - diskWidth / 2;  // Center disk on the rod
                 short clr = get_clr(diskWeight);
-                draw_square(diskX, diskY - 15, diskWidth, clr);
-                diskY -= 15 + 1;  // Move up for the next disk (next smaller size)
+
+                // Draw the disk using the calculated parameters
+                draw_square(diskX, diskY - 15, diskWidth, clr);  // Adjust diskY for height
+
+                diskY -= 15 + 2;  // Move up for the next disk (subtract disk height)
             }
         }
     }
 }
 
-
-
-void printRods(int rods[RODS][DISKS], int top[RODS]) {
+void printRods(int rods[RODS][DISKS], int top[RODS], int moves) {
     
     printf("Rod 1: ");
     for (int i = 0; i < top[0]; i++) {
@@ -406,7 +433,8 @@ void printRods(int rods[RODS][DISKS], int top[RODS]) {
         printf("%d ", rods[2][i]);
     }
     printf("\n");
-    drawRodsAndDisks(rods, top);
+    drawRodsAndDisks(rods, top, moves);
+
 }
 
 void moveDisk(int rods[RODS][DISKS], int top[RODS], int fromRod, int toRod) {
@@ -426,7 +454,6 @@ void moveDisk(int rods[RODS][DISKS], int top[RODS], int fromRod, int toRod) {
     rods[toRod][top[toRod]] = disk;
     top[toRod]++;
 }
-
 
 int getUserInput() {
     unsigned long currentSwval;
@@ -475,7 +502,6 @@ int getUserInput() {
     
     return option;
 }
-
 
 // void towerOfHanoi(int disks, int fromRod, int toRod, int auxRod) {
 //     if (disks == 1) {
