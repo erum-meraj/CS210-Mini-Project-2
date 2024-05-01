@@ -2,7 +2,9 @@
 #include <stdlib.h>
 
 #define RODS 3
-#define DISKS 4
+int DISKS = 4;
+
+
 #define JTAG_UART_BASE ((volatile int *)0xFF201000)
 #define JTAG_UART_CONTROL ((volatile int *)(0xFF201000 + 4))
 #define BLUE 0x00ff
@@ -33,11 +35,36 @@ short rgbconv(int r, int g, int b);
 short get_clr(int x);
 void displayMovesCount(int moves, int y);
 
+
+
 short rgbconv(int r, int g, int b) {
     short color = ((r & 0x1F) << 11) | ((g & 0x3F) << 5) | (b & 0x1F);
     return color;
 }
+volatile int* audio_dev = (int*) 0xff203040; 
 
+void play_note(int freq, int duration) {
+    int counter;
+    int status_reg;
+    int sample_value = 0x7fffffff;
+    duration = duration * 100;
+    while (duration--) {
+        // Wait for available write space
+        do {
+            status_reg = *((volatile int *)(audio_dev + 1));
+        } while ((status_reg & 0xff00) == 0 || (status_reg & 0xff) == 0);
+
+        // Write two audio samples
+        counter = freq;
+        while (counter--) {
+            *((volatile int *)(audio_dev + 2)) = sample_value;
+            *((volatile int *)(audio_dev + 3)) = sample_value;
+        }
+
+        // Invert waveform
+        sample_value = ~sample_value + 1;
+    }
+}
 void displayMovesCount(int moves, int y) {
     // Convert moves count to a string
     char movesStr[10];
@@ -108,7 +135,16 @@ void homeScreen()
     writeString(24, 57, h3);
     char h2[] = "Press ENTER to start";
     writeString(28, 55, h2);
-
+    char h4[] = "Choose the number of disks: (3, 4, or 5)";
+    writeString(24, 59, h4);
+    while (1) {
+        // Check user input for the number of disks
+        c = get_jtag(JTAG_UART_ptr);
+        if (c >= '3' && c <= '5') {
+            DISKS = c - '0'; // Convert char to int
+            break;
+        }
+    }
     while (1)
     {
         c = get_jtag(JTAG_UART_ptr);
@@ -283,8 +319,6 @@ void write_char(int x, int y, char c) {
 void clear_screen() {
   int x, y;
     short clr = rgbconv(252, 228, 206);
-  // Fill the screen with blue color (0x001F for a blue pixel)
-  clr = -8878;
   for (x = 0; x < 320; x++) {
     for (y = 0; y < 240; y++) {
       write_pixel(x, y, clr); // Blue color
@@ -789,7 +823,7 @@ void moveDisk(int rods[RODS][DISKS], int top[RODS], int fromRod, int toRod) {
         printf("Cannot place a larger disk on top of a smaller disk.\n");
         return;
     }
-
+    play_note(500,10);
     top[fromRod]--;
     rods[toRod][top[toRod]] = disk;
     top[toRod]++;
@@ -842,13 +876,3 @@ int getUserInput() {
     
     return option;
 }
-
-// void towerOfHanoi(int disks, int fromRod, int toRod, int auxRod) {
-//     if (disks == 1) {
-//         printf("Move disk from rod %d to rod %d\n", fromRod + 1, toRod + 1);
-//         return;
-//     }
-//     towerOfHanoi(disks - 1, fromRod, auxRod, toRod);
-//     printf("Move disk from rod %d to rod %d\n", fromRod + 1, toRod + 1);
-//     towerOfHanoi(disks - 1, auxRod, toRod, fromRod);
-// }
