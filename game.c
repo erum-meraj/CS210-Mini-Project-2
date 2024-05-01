@@ -284,6 +284,7 @@ void clear_screen() {
   int x, y;
     short clr = rgbconv(252, 228, 206);
   // Fill the screen with blue color (0x001F for a blue pixel)
+  clr = -8878;
   for (x = 0; x < 320; x++) {
     for (y = 0; y < 240; y++) {
       write_pixel(x, y, clr); // Blue color
