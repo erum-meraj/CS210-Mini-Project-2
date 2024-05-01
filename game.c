@@ -758,7 +758,6 @@ void renderImage() {
     }
 }
 
-
 void draw_square(int x, int y, int size, short color) {
     int i, j;
     for (i = y; i < y + 15; i++) {
