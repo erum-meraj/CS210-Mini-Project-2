@@ -34,6 +34,10 @@ void put_jtag(volatile int *JTAG_UART_ptr, char c);
 short rgbconv(int r, int g, int b);
 short get_clr(int x);
 void displayMovesCount(int moves, int y);
+void play_note(int freq, int duration);
+int game_over(int moves);
+void renderImage();
+void drawRodsAndDisks(int rods[RODS][DISKS], int top[3], int moves) ;
 
 
 
@@ -214,8 +218,22 @@ int game_over(int moves){
     writeString(25, 35, h7);
 
     displayMovesCount(moves, 40);
-    char h8[] = "Least Number of moves Required:  15";
+    char h8[] = "Least Number of moves Required:";
     writeString(25, 42, h8);
+    char h9[] = "7";
+    char h10[] = "15";
+    char h11[] = "31";
+    if (DISKS == 3){
+        writeString(58, 42, h9);
+    }
+    else if (DISKS == 4){
+        writeString(58, 42, h10);
+    }
+    else{
+        writeString(58, 42, h11);
+    }
+
+
 
     while (1)
     {
@@ -823,7 +841,7 @@ void moveDisk(int rods[RODS][DISKS], int top[RODS], int fromRod, int toRod) {
         printf("Cannot place a larger disk on top of a smaller disk.\n");
         return;
     }
-    play_note(500,10);
+    // play_note(500,10);
     top[fromRod]--;
     rods[toRod][top[toRod]] = disk;
     top[toRod]++;
